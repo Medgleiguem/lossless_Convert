@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Unbounded:wght@300;400;700;900&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:        #080810;
+  --surface:   #0e0e1a;
+  --surface2:  #141428;
+  --border:    #1c1c36;
+  --border2:   #262640;
+  --accent:    #00e5ff;
+  --accent2:   #ff3d71;
+  --accent3:   #aaff00;
+  --text:      #dde0ff;
+  --muted:     #4a4a6a;
+  --muted2:    #6a6a9a;
+  --success:   #00e5a0;
+  --warning:   #ffcc00;
+  --error:     #ff3d71;
+  --font-mono: 'Space Mono', monospace;
+  --font-disp: 'Unbounded', sans-serif;
+}
+
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+
+::selection {
+  background: var(--accent);
+  color: #000;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
