@@ -1,0 +1,16 @@
+# netlify.toml
+# ------------
+# Netlify build configuration for the SoundPixel React frontend.
+# Drop this file in the ROOT of your repository.
+
+[build]
+  # Tell Netlify to build from the frontend subfolder
+  base    = "frontend"
+  command = "npm install --legacy-peer-deps && npm run build"
+  publish = "build"
+
+# SPA fallback — all routes serve index.html so React Router works
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

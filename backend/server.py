@@ -59,7 +59,13 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
 
 # ── CORS (manual, no flask-cors needed) ──────────────────────────────────────
 
-_ALLOWED_ORIGINS = {"http://localhost:3000", "http://127.0.0.1:3000"}
+# In production, set ALLOWED_ORIGIN env var to your Netlify URL.
+# Multiple origins: comma-separated  e.g. "https://a.netlify.app,https://custom.com"
+_ALLOWED_ORIGINS = {
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    *[o.strip() for o in os.environ.get("ALLOWED_ORIGIN", "").split(",") if o.strip()],
+}
 _EXPOSED_HEADERS = ", ".join([
     "Content-Disposition",
     "X-Input-Size", "X-Output-Size",

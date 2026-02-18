@@ -1,0 +1,33 @@
+# render.yaml
+# -----------
+# Render Blueprint — deploys the SoundPixel Flask backend.
+# Place this file in the ROOT of your repository.
+#
+# Deploy: https://dashboard.render.com/new/blueprint
+
+services:
+  - type: web
+    name: soundpixel-api
+    runtime: python
+    region: oregon
+    plan: free
+
+    rootDir: backend
+
+    buildCommand: pip install -r requirements.txt
+
+    # Gunicorn serves Flask in production
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 server:app
+
+    envVars:
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: MAX_UPLOAD_MB
+        value: "100"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      # IMPORTANT: set this to your Netlify URL after deploying the frontend.
+      # e.g.  https://soundpixel.netlify.app
+      # This allows the frontend to call the backend without CORS errors.
+      - key: ALLOWED_ORIGIN
+        value: ""   # ← paste your Netlify URL here, then redeploy
