@@ -30,4 +30,4 @@ services:
       # e.g.  https://soundpixel.netlify.app
       # This allows the frontend to call the backend without CORS errors.
       - key: ALLOWED_ORIGIN
-        value: "https://soundpixel-abc123.netlify.app"  # ← your Netlify URL
+        value: "https://mg-soundpixel.netlify.app/"  # ← your Netlify URL
