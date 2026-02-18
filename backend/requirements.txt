@@ -1,3 +1,11 @@
+# Core dependencies
 flask>=3.0.0
 pillow>=10.0.0
-gunicorn>=21.0.0cryptography>=41.0.0
+gunicorn>=21.0.0
+
+# Security & Encryption
+cryptography>=41.0.0
+
+# Optional: For development
+# flask-cors>=4.0.0  (if CORS middleware is preferred over manual headers)
+# python-dotenv>=1.0.0  (for environment variable management)

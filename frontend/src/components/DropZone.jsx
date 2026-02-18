@@ -24,7 +24,7 @@ export function DropZone({ label, hint, emoji, isDragOver, dropZoneProps, inputP
       <div
         {...dropZoneProps}
         className={[
-          'relative cursor-pointer rounded-lg p-10 text-center transition-all duration-200',
+          'h-full relative cursor-pointer rounded-lg p-10 text-center transition-all duration-200',
           'border border-dashed',
           isDragOver
             ? 'border-accent bg-accent/5'
