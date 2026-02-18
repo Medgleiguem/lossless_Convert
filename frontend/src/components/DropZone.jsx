@@ -19,12 +19,12 @@ import { formatBytes, fileEmoji } from '../utils/format';
 
 export function DropZone({ label, hint, emoji, isDragOver, dropZoneProps, inputProps, file, onClear }) {
   return (
-    <div>
+    <div className="h-full flex flex-col">
       {/* Drop area */}
       <div
         {...dropZoneProps}
         className={[
-          'h-full relative cursor-pointer rounded-lg p-10 text-center transition-all duration-200',
+          'flex-1 relative cursor-pointer rounded-lg p-10 text-center transition-all duration-200',
           'border border-dashed',
           isDragOver
             ? 'border-accent bg-accent/5'
