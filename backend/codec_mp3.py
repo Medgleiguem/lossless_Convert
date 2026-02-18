@@ -1,3 +1,41 @@
+"""
+codec_mp3.py — SoundPixel MP3 Steganography Codec
+==================================================
+Embeds any image (PNG, JPG, etc.) inside a valid MP3 audio file — losslessly.
+The MP3 continues to play normally in any audio player.
+
+Strategy
+--------
+MP3 players read audio frames sequentially and stop at the last valid frame.
+Any data appended after the final MP3 frame is ignored by players but preserved
+by file copy operations. We exploit this by appending a signed, versioned block
+of raw image bytes after the MP3 audio data.
+
+Layout of the output .mp3 file:
+  ┌────────────────────────────────────────────┐
+  │  Original MP3 audio frames (untouched)     │
+  ├────────────────────────────────────────────┤  ← mp3_size bytes
+  │  MAGIC       8 bytes  b'SPXLV2\x00\x00'   │
+  │  version     2 bytes  uint16 big-endian    │
+  │  img_size    8 bytes  uint64 big-endian    │
+  │  crc32       4 bytes  uint32 big-endian    │
+  │  fname_len   2 bytes  uint16 big-endian    │
+  │  fname       N bytes  UTF-8 (max 255 B)   │
+  │  image data  img_size bytes                │
+  │  TAIL_MAGIC  8 bytes  b'SPXLEND\x00'      │
+  └────────────────────────────────────────────┘
+
+The TAIL_MAGIC at the very end lets decode() quickly verify the block is intact
+even before reading the header, and lets us locate the header by seeking backward.
+
+Guarantees
+----------
+- encode(mp3_bytes, image_bytes, image_filename) → mp3_bytes_with_embedded_image
+- decode(mp3_bytes_with_embedded_image) → (image_bytes, image_filename)
+- The output MP3 plays normally in any audio player.
+- CRC-32 mismatch → CorruptedFileError (image was modified or truncated)
+- decode(encode(mp3, img, name)).image_data == img  (100% lossless)
+"""
 
 import struct
 import zlib
