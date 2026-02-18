@@ -1,7 +1,27 @@
-/* Global resets only — Tailwind handles everything else via CDN */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Space Mono', monospace; -webkit-font-smoothing: antialiased; }
-::selection { background: #00e5ff; color: #000; }
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: #080810; }
-::-webkit-scrollbar-thumb { background: #262640; border-radius: 2px; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global customizations */
+@layer base {
+  body {
+    @apply font-mono bg-bg text-white;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  ::selection {
+    @apply bg-accent text-black;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-bg;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border2 rounded;
+  }
+}
