@@ -1,7 +1,8 @@
 """
-codec_png.py — SoundPixel PNG Codec
-=====================================
+codec_png.py — SoundPixel PNG Codec (with optional AES-256 encryption)
+=========================================================================
 Converts any file (MP3, audio, etc.) to a lossless PNG image and back.
+Optionally encrypts the payload with AES-256-GCM using password-based key derivation.
 
 HOW IT WORKS
 ------------
@@ -12,10 +13,16 @@ A binary header is prepended that stores:
   - Exact data length  (trims padding on decode)
   - CRC-32 checksum  (detects corruption)
 
+If a password is provided:
+  - Entire payload (header + data) is encrypted using AES-256-GCM
+  - Encryption adds ~56 bytes of metadata (salt, nonce, tag)
+  - Authentication tag ensures data integrity and password correctness
+
 PNG is inherently lossless, so every byte survives the round-trip exactly.
 
 FORMAT LAYOUT (inside PNG pixel data)
 --------------------------------------
+UNENCRYPTED:
   Bytes  0–3   Magic:        b'SPXL'
   Bytes  4–7   Version:      uint32 big-endian
   Bytes  8–15  Data length:  uint64 big-endian
@@ -24,11 +31,21 @@ FORMAT LAYOUT (inside PNG pixel data)
   Bytes 22–N   Filename:     UTF-8 (max 255 bytes)
   Bytes N+1…   Original file bytes
 
+ENCRYPTED (when password is provided):
+  Bytes  0–7   Encryption magic: b'SPXLENC\x00'
+  Bytes  8–23  Salt:        16 bytes (for PBKDF2)
+  Bytes 24–39  Nonce:       16 bytes (for AES-GCM)
+  Bytes 40–55  Auth tag:    16 bytes (authentication)
+  Bytes 56+    Ciphertext:  encrypted [header + data]
+
 GUARANTEE
 ---------
   decode(encode(data, name)) == data   (100% lossless, CRC-32 verified)
+  With password:
+    - Confidentiality via AES-256-GCM
+    - Authenticity verified via AEAD authentication tag
+    - Tampered/corrupted data detected immediately
 """
-
 import io
 import math
 import struct
@@ -36,6 +53,8 @@ import zlib
 from dataclasses import dataclass
 
 from PIL import Image
+
+import encryption
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -139,13 +158,15 @@ def _square_dimensions(num_pixels: int) -> tuple[int, int]:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def encode(data: bytes, filename: str = "audio.mp3") -> PngEncodeResult:
+def encode(data: bytes, filename: str = "audio.mp3", password: str = None) -> PngEncodeResult:
     """
     Encode any binary data into a lossless PNG image.
 
     Args:
         data:     Raw bytes of the file to encode.
         filename: Original filename embedded in the PNG (recovered on decode).
+        password: Optional password for AES-256-GCM encryption. If provided,
+                  the payload is encrypted before embedding in PNG.
 
     Returns:
         PngEncodeResult with the PNG bytes and metadata.
@@ -156,6 +177,10 @@ def encode(data: bytes, filename: str = "audio.mp3") -> PngEncodeResult:
     filename = filename or "file.bin"
     header   = _build_header(bytes(data), filename)
     payload  = header + bytes(data)
+    
+    # Encrypt payload if password provided
+    if password:
+        payload = encryption.encrypt(payload, password)
 
     # Pad to a multiple of 3 so every pixel is fully populated
     remainder = len(payload) % 3
@@ -181,12 +206,14 @@ def encode(data: bytes, filename: str = "audio.mp3") -> PngEncodeResult:
     )
 
 
-def decode(png_bytes: bytes) -> PngDecodeResult:
+def decode(png_bytes: bytes, password: str = None) -> PngDecodeResult:
     """
     Decode a SoundPixel PNG back to the original file bytes.
 
     Args:
         png_bytes: Raw PNG file bytes.
+        password:  Optional password if the PNG was encrypted during encoding.
+                   Required if encryption was used, must match the encoding password.
 
     Returns:
         PngDecodeResult with the data, filename, and size.
@@ -195,6 +222,7 @@ def decode(png_bytes: bytes) -> PngDecodeResult:
         NotAPngCodecFile: The PNG has no SoundPixel payload.
         PngCorruptedError: CRC-32 mismatch.
         PngVersionError: Unknown codec version.
+        encryption.DecryptionFailedError: Wrong password or data tampered.
     """
     try:
         img = Image.open(io.BytesIO(png_bytes)).convert("RGB")
@@ -202,6 +230,23 @@ def decode(png_bytes: bytes) -> PngDecodeResult:
         raise NotAPngCodecFile(f"Could not open as PNG: {exc}") from exc
 
     stream = img.tobytes()  # flat R,G,B,R,G,B,… byte sequence
+    
+    # Check if payload is encrypted
+    if encryption.is_encrypted(stream):
+        if not password:
+            raise PngCorruptedError(
+                "PNG contains encrypted data but no password was provided."
+            )
+        try:
+            stream = encryption.decrypt(stream, password)
+        except encryption.DecryptionFailedError as exc:
+            raise PngCorruptedError(
+                f"Decryption failed: {str(exc)}"
+            ) from exc
+        except encryption.InvalidPasswordError as exc:
+            raise PngCorruptedError(
+                f"Invalid password: {str(exc)}"
+            ) from exc
 
     _, data_len, expected_crc, filename, header_size = _parse_header(stream)
 

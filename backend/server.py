@@ -150,7 +150,8 @@ def png_encode():
     Encode any file into a SoundPixel PNG.
 
     Form fields:
-      file — any file (MP3, WAV, FLAC, etc.)
+      file     — any file (MP3, WAV, FLAC, etc.)
+      password — optional password for AES-256-GCM encryption
     """
     f, err = _require_file("file")
     if err:
@@ -158,11 +159,14 @@ def png_encode():
 
     raw      = f.read()
     filename = f.filename or "file.bin"
+    password = request.form.get("password")  # Optional
 
-    logger.info("PNG encode: '%s' (%d B)", filename, len(raw))
+    logger.info("PNG encode: '%s' (%d B)%s", 
+                filename, len(raw), 
+                " [encrypted]" if password else "")
 
     try:
-        result = png_codec.encode(raw, filename)
+        result = png_codec.encode(raw, filename, password=password)
     except Exception as exc:
         logger.exception("PNG encode failed for '%s'", filename)
         return _error(f"Encoding failed: {exc}", 500)
@@ -176,6 +180,7 @@ def png_encode():
     resp.headers["X-Image-Height"] = str(result.image_height)
     resp.headers["X-Input-Size"]   = str(result.input_size)
     resp.headers["X-Output-Size"]  = str(len(result.png_bytes))
+    resp.headers["X-Encrypted"]    = "true" if password else "false"
 
     logger.info(
         "PNG encode done: %dx%d, %d B → %d B",
@@ -191,17 +196,22 @@ def png_decode():
     Decode a SoundPixel PNG back to the original file.
 
     Form fields:
-      file — a SoundPixel PNG created by /api/png/encode
+      file     — a SoundPixel PNG created by /api/png/encode
+      password — optional password if encryption was used during encoding
     """
     f, err = _require_file("file")
     if err:
         return err
 
     raw = f.read()
-    logger.info("PNG decode: '%s' (%d B)", f.filename, len(raw))
+    password = request.form.get("password")  # Optional
+
+    logger.info("PNG decode: '%s' (%d B)%s", 
+                f.filename, len(raw),
+                " [with password]" if password else "")
 
     try:
-        result = png_codec.decode(raw)
+        result = png_codec.decode(raw, password=password)
     except NotAPngCodecFile  as exc: return _error(str(exc), 422)
     except PngCorruptedError as exc: return _error(str(exc), 422)
     except PngVersionError   as exc: return _error(str(exc), 422)
@@ -228,8 +238,9 @@ def mp3_encode():
     The MP3 continues to play normally in any audio player.
 
     Form fields:
-      mp3   — the carrier audio file (.mp3)
-      image — the image to embed (PNG, JPG, etc.)
+      mp3      — the carrier audio file (.mp3)
+      image    — the image to embed (PNG, JPG, etc.)
+      password — optional password for AES-256-GCM encryption
     """
     mp3_file, err = _require_file("mp3")
     if err:
@@ -242,14 +253,16 @@ def mp3_encode():
     mp3_bytes   = mp3_file.read()
     image_bytes = img_file.read()
     image_name  = img_file.filename or "image.png"
+    password    = request.form.get("password")  # Optional
 
     logger.info(
-        "MP3 encode: embed '%s' (%d B) into '%s' (%d B)",
+        "MP3 encode: embed '%s' (%d B) into '%s' (%d B)%s",
         image_name, len(image_bytes), mp3_file.filename, len(mp3_bytes),
+        " [encrypted]" if password else "",
     )
 
     try:
-        result = mp3_codec.encode(mp3_bytes, image_bytes, image_name)
+        result = mp3_codec.encode(mp3_bytes, image_bytes, image_name, password=password)
     except Exception as exc:
         logger.exception("MP3 encode failed")
         return _error(f"Encoding failed: {exc}", 500)
@@ -262,6 +275,7 @@ def mp3_encode():
     resp.headers["X-Mp3-Size"]   = str(result.mp3_size)
     resp.headers["X-Image-Size"] = str(result.image_size)
     resp.headers["X-Total-Size"] = str(result.total_size)
+    resp.headers["X-Encrypted"]  = "true" if password else "false"
 
     logger.info(
         "MP3 encode done: audio=%d B + image=%d B → %d B",
@@ -276,17 +290,22 @@ def mp3_decode():
     Extract the image hidden inside a SoundPixel MP3.
 
     Form fields:
-      file — a SoundPixel MP3 created by /api/mp3/encode
+      file     — a SoundPixel MP3 created by /api/mp3/encode
+      password — optional password if encryption was used during encoding
     """
     f, err = _require_file("file")
     if err:
         return err
 
     raw = f.read()
-    logger.info("MP3 decode: '%s' (%d B)", f.filename, len(raw))
+    password = request.form.get("password")  # Optional
+
+    logger.info("MP3 decode: '%s' (%d B)%s", 
+                f.filename, len(raw),
+                " [with password]" if password else "")
 
     try:
-        result = mp3_codec.decode(raw)
+        result = mp3_codec.decode(raw, password=password)
     except NotEncodedError       as exc: return _error(str(exc), 422)
     except CorruptedFileError    as exc: return _error(str(exc), 422)
     except UnsupportedVersionError as exc: return _error(str(exc), 422)
